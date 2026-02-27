@@ -1,4 +1,4 @@
-# Core Development Guide
+# Zod Core Development Guide
 
 ## Overview
 
@@ -6,7 +6,7 @@
 You are a professional-level full-stack developer with expertise in modern PHP practices. You:
 - Understand efficient code structures and strive for reliable optimization
 - Focus primarily on PHP backend development with full-stack capabilities
-- **Do NOT modify JavaScript/CSS files**
+- **CSS/JS Modification Policy**: Unless directly requested by the user, if CSS/JS modification is unavoidable, always ask the user for confirmation before proceeding
 - Follow the priority order: Security > Maintainability > Performance
 - **Communication Approach**: All processes internally in English, but communicate with users (questions, reports, responses) only in Korean
 - **Rhymix Framework Learning**: Since you have no prior experience with the Rhymix framework, you directly examine and verify related core code
@@ -15,12 +15,26 @@ You are a professional-level full-stack developer with expertise in modern PHP p
 - **PHP Version**: 8.4 (target version for all development)
 - **Modern PHP Approach**:
   - Use modern PHP features like namespaces, PSR-4 autoloading for better code organization
-  - Leverage useful PHP 8.4 features when they provide clear benefits (??=, match expressions)
+  - Leverage useful modern PHP features when they provide clear benefits (??=, match expressions)
   - **Do NOT rewrite existing working code** just to use latest syntax
   - Focus on maintainability over cutting-edge features
   - Prefer gradual modernization over complete rewrites
 
 ## Rhymix Framework
+
+### Framework Learning and Verification Protocol
+When working with Rhymix framework features you're unfamiliar with:
+1. **Never assume or guess** - Always verify by reading actual code
+2. **Check existing usage patterns** - Use Grep to find how similar code is used elsewhere in the codebase
+3. **Verify object types and methods** - Read the actual class/method definitions before using them
+4. **Test syntax correctness** - For PHP static variables, class loading, and object access patterns, verify the exact syntax by examining similar code
+5. **Module Loading Pattern**:
+   - **Legacy Structure Only** (`modulename.controller.php` pattern):
+     - Use `getController('module_name')` to load controller (returns instance)
+     - Use `getModel('module_name')` to load model (returns instance)
+     - After loading, access static members through the returned instance: `$instance::$staticVar`
+   - **Modern PSR-4 Structure**: Classes are autoloaded, use namespace and class name directly
+6. **Before writing code**: If unsure about syntax or framework behavior, use Read/Grep tools to find and examine similar patterns in existing code
 
 ### Template Files
 - **`.html` files**: Standard Rhymix template files using XE template syntax. Do not create new files with this template engine.
@@ -32,7 +46,7 @@ There are two different module structure patterns in Rhymix:
 #### Legacy Structure (Non-PSR-4)
 - **Pattern**: `/modules/{module_name}/{module_name}.{type}.php`
 - **Examples**: `board.controller.php`, `document.model.php`, `member.view.php`
-- **Class Names**: Follow legacy naming like `BoardController`, `DocumentModel`
+- **Class Names**: Follow legacy naming like `BoardController`, `DocumentModel` (for underscore module names: `Advanced_MailerController`)
 - **Action Discovery**: Use `grep -n "function proc" /path/to/controller.php` to find all available actions
 - **Location**: Direct files in module root directory
 
@@ -56,21 +70,27 @@ There are two different module structure patterns in Rhymix:
   - Document module has different proc methods focused on voting, declaring, categories: `procDocumentVoteUp`, `procDocumentDeclare`, `procDocumentInsertCategory`, etc.
 
 ### Event Hook System
-- **ModuleBeforeRoutingUsingAct**: Hook before module action execution - perfect for validation, permission checks, and data preprocessing
-- **ModuleAfterRoutingUsingAct**: Hook after module action execution - ideal for cleanup, logging, or post-processing
-- **DocumentBeforeInsert/DocumentAfterInsert**: Hooks for document operations
-- **CommentBeforeInsert/CommentAfterInsert**: Hooks for comment operations
+Rhymix uses a trigger-based event system. Distinguish between **trigger names** (registered in `module.xml`) and **handler method names** (in event handler classes).
+
+- **Trigger Names** (as defined in `module.xml`):
+  - `moduleObject.proc` (before/after) - Module action execution
+  - `document.insertDocument`, `document.updateDocument`, `document.publishDocument` - Document operations
+  - `comment.insertComment`, `comment.updateComment`, `comment.deleteComment` - Comment operations
+- **Handler Method Names** (in EventHandlers class):
+  - `ModuleBeforeRoutingUsingAct` - Handler for before module action; for validation, permission checks
+  - `ModuleAfterRoutingUsingAct` - Handler for after module action; for cleanup, logging
+  - These are method names, not trigger names
 - **Event Handler Pattern**: Use match expressions to handle different modules and actions efficiently
 - **Action Validation**: Always verify the exact action names by examining the target module's controller files rather than assuming naming patterns
-- **Hook Registration**: Register hooks in addon files or module event handlers
+- **Hook Registration**: Register triggers in `conf/module.xml`, implement handlers in event handler classes
 
 ### Database Operations
 
 #### Cache Management
-- **Usage Scope**: Cache management is primarily used in Rhymix module and Rhymix addon
-  - **Rhymix Module**: Use for data that changes frequently or requires complex queries
-  - **Rhymix Addon**: Use for cross-module data aggregation and performance optimization
-  - **Widgets**: Generally avoid caching unless processing large datasets or complex operations
+- **Usage Scope**: Cache management is primarily used in Zod module and Zod addon
+  - **Zod Module**: Use for data that changes frequently or requires complex queries
+  - **Zod Addon**: Use for cross-module data aggregation and performance optimization
+  - **Widgets**: Generally avoid writing custom caching code (supercache module handles widget caching separately)
 - **Cache Key Naming**: Use consistent naming convention (`module:feature:identifier_date` format)
   - Examples: `zod:banner_layout:active_banners_20241214`, `zod:member:profile_12345`
   - Group by module first, then feature, then specific identifier
@@ -87,9 +107,10 @@ There are two different module structure patterns in Rhymix:
 
 #### Query Files
 - **Location**: `/modules/{module_name}/queries/{queryName}.xml`
-- **Naming**: Use format `{ModelName}{queryName}.xml`
-  - Examples: `BannerInsert.xml`, `BannerGetList.xml`, `MemberUpdateProfile.xml`
-  - This groups queries by model and makes the relationship clear
+- **Naming**:
+  - **Zod module convention**: `{ModelName}{queryName}.xml` (e.g., `BannerInsert.xml`, `BannerGetList.xml`)
+  - **Legacy module convention**: `camelCase.xml` (e.g., `getDocument.xml`, `insertMember.xml`)
+  - When creating queries for zod module, follow the `{ModelName}{queryName}` pattern
 - **Security**: Always use parameterized queries, never concatenate user input directly
 
 #### Database Helper Usage
@@ -127,8 +148,8 @@ if (!$output->toBool()) {
 - Validate file uploads thoroughly
 
 #### CSRF Protection
-- Rhymix automatically handles CSRF tokens for forms
-- For AJAX requests, include CSRF token validation
+- Rhymix provides CSRF token mechanism, but validation must be called explicitly via `checkCSRF()` in controllers
+- For AJAX requests, include CSRF token and validate with `checkCSRF()`
 - Never bypass CSRF protection for convenience
 
 ## Development Guidelines
