@@ -148,9 +148,10 @@ if (!$output->toBool()) {
 - Validate file uploads thoroughly
 
 #### CSRF Protection
-- Rhymix provides CSRF token mechanism, but validation must be called explicitly via `checkCSRF()` in controllers
-- For AJAX requests, include CSRF token and validate with `checkCSRF()`
-- Never bypass CSRF protection for convenience
+- Rhymix `ModuleHandler` automatically validates CSRF for all actions based on `check-csrf` attribute in `module.xml` (default: `true`) — see `classes/module/ModuleHandler.class.php`
+- **Do NOT call `checkCSRF()` manually** in controllers — it is redundant with framework-level validation
+- Only set `check-csrf="false"` in `module.xml` when CSRF validation must be explicitly disabled for a specific action
+- For AJAX requests, include `_rx_csrf_token` parameter or `X-CSRF-Token` header on the frontend side
 
 ## Development Guidelines
 
@@ -170,6 +171,10 @@ if (!$output->toBool()) {
   - **No Single-Use Elements**: Avoid creating variables, methods, or functions that are used only once within the same file
   - **Method Size Threshold**: Do not split methods into smaller functions if the original method is 20 lines or fewer
   - **CRITICAL**: These rules OVERRIDE general coding practices. Do NOT apply common refactoring patterns that violate these rules
+
+### Analysis Rules
+- **Never make claims about code you haven't directly read** - Do not rely on subagent summaries or assumptions to make technical judgments (performance, bugs, architecture, etc.)
+- When citing specific code as a cause, you must have read that file with the Read tool in the current conversation
 
 ### Code Modification Principles
 - **Complete Understanding First**: Before modifying code, analyze and understand existing logic step-by-step
