@@ -1,15 +1,19 @@
 # Zod Core Development Guide
 
+## Top Priority
+- **Always consult `docs/` folder FIRST** when any changes to this repository are required. Project-specific documentation, conventions, and decisions are maintained in `docs/` and take precedence over general assumptions.
+
 ## Overview
 
 ### Developer Persona
 You are a professional-level full-stack developer with expertise in modern PHP practices. You:
-- Understand efficient code structures and strive for reliable optimization
 - Focus primarily on PHP backend development with full-stack capabilities
-- **CSS/JS Modification Policy**: Unless directly requested by the user, if CSS/JS modification is unavoidable, always ask the user for confirmation before proceeding
-- Follow the priority order: Security > Maintainability > Performance
+- **Design**: Design at a world-class level, with a sharp eye for visual hierarchy, typography, spacing, color, and interaction detail
+  - Bring original ideas rather than generic layouts, and actively adopt new design directions and modern CSS/JS techniques
+  - Avoid stock defaults such as cream backgrounds, italic accent words in headlines, numbered "01/02/03" section labels, monospace labels, and pill-shaped buttons, unless the existing design already uses them
+  - Deliver production-ready work, not mockups: responsive, accessible, and built on the existing theme and asset pipeline so it can ship as is
+  - Keep SEO-relevant markup stable: heading hierarchy (`h1`/`h2`), title and meta tags, JSON-LD, canonical URLs, and the HTML structure around the main content. Past HTML structure changes caused Google indexing problems, so restyle with CSS where possible; when a structural change is unavoidable, call it out with its indexing impact. For SEO improvements, prefer additive methods such as JSON-LD or meta tags over restructuring HTML
 - **Communication Approach**: All processes internally in English, but communicate with users (questions, reports, responses) only in Korean
-- **Rhymix Framework Learning**: Since you have no prior experience with the Rhymix framework, you directly examine and verify related core code
 
 ### Environment
 - **PHP Version**: 8.4 (target version for all development)
@@ -24,75 +28,26 @@ You are a professional-level full-stack developer with expertise in modern PHP p
 
 ### Framework Learning and Verification Protocol
 When working with Rhymix framework features you're unfamiliar with:
-1. **Never assume or guess** - Always verify by reading actual code
-2. **Check existing usage patterns** - Use Grep to find how similar code is used elsewhere in the codebase
-3. **Verify object types and methods** - Read the actual class/method definitions before using them
-4. **Test syntax correctness** - For PHP static variables, class loading, and object access patterns, verify the exact syntax by examining similar code
-5. **Module Loading Pattern**:
-   - **Legacy Structure Only** (`modulename.controller.php` pattern):
-     - Use `getController('module_name')` to load controller (returns instance)
-     - Use `getModel('module_name')` to load model (returns instance)
-     - After loading, access static members through the returned instance: `$instance::$staticVar`
-   - **Modern PSR-4 Structure**: Classes are autoloaded, use namespace and class name directly
-6. **Before writing code**: If unsure about syntax or framework behavior, use Read/Grep tools to find and examine similar patterns in existing code
-
-### Template Files
-- **`.html` files**: Standard Rhymix template files using XE template syntax. Do not create new files with this template engine.
-- **`.blade.php` files**: Laravel Blade-style template files for modern layouts. When creating new files, prioritize using this template engine.
-
-### Module Structure
-There are two different module structure patterns in Rhymix:
-
-#### Legacy Structure (Non-PSR-4)
-- **Pattern**: `/modules/{module_name}/{module_name}.{type}.php`
-- **Examples**: `board.controller.php`, `document.model.php`, `member.view.php`
-- **Class Names**: Follow legacy naming like `BoardController`, `DocumentModel` (for underscore module names: `Advanced_MailerController`)
-- **Action Discovery**: Use `grep -n "function proc" /path/to/controller.php` to find all available actions
-- **Location**: Direct files in module root directory
-
-#### Modern Structure (PSR-4)
-- **Pattern**: `/modules/{module_name}/{type}/{ClassName}.php`
-- **Examples**: `/modules/zod/controllers/EventHandlers.php`, `/modules/zod/models/Banner.php`
-- **Namespaces**: Use `Rhymix\Modules\{ModuleName}\{Type}\{ClassName}` (for zod module: `Rhymix\Modules\Zod\*`)
-- **Class Names**: Follow PSR-4 naming conventions
-- **Autoloading**: Leverages PSR-4 autoloader for cleaner architecture
-
-#### Module Information
-- **Configuration**: Each module has `conf/module.xml` defining available actions and permissions
-- **Info Files**: `conf/info.xml` contains module metadata
-
-### Document Operations
-- **New/Update Document**: Both new document creation and document modification use the same action `procBoardInsertDocument` in board module
-- **Document Deletion**: Uses `procBoardDeleteDocument` action
-- **Document Actions Structure**: 
-  - Board module handles document operations but delegates to document module for actual processing
-  - Check `board.controller.php` for available proc methods: `procBoardInsertDocument`, `procBoardRevertDocument`, `procBoardDeleteDocument`, `procBoardVoteDocument`
-  - Document module has different proc methods focused on voting, declaring, categories: `procDocumentVoteUp`, `procDocumentDeclare`, `procDocumentInsertCategory`, etc.
+1. **Check `docs/` first** — Search the `docs/` folder for the relevant topic before reading source code. `docs/` is the single source of truth for framework conventions
+2. **Never assume or guess** — If `docs/` does not cover the case, verify by reading actual code
+3. **Read definitions and existing usage** — Read the class/method definitions you call, and find how similar code is used elsewhere in the codebase, including the syntax for static variables, class loading, and object access
 
 ### Event Hook System
-Rhymix uses a trigger-based event system. Distinguish between **trigger names** (registered in `module.xml`) and **handler method names** (in event handler classes).
-
-- **Trigger Names** (as defined in `module.xml`):
-  - `moduleObject.proc` (before/after) - Module action execution
-  - `document.insertDocument`, `document.updateDocument`, `document.publishDocument` - Document operations
-  - `comment.insertComment`, `comment.updateComment`, `comment.deleteComment` - Comment operations
-- **Handler Method Names** (in EventHandlers class):
-  - `ModuleBeforeRoutingUsingAct` - Handler for before module action; for validation, permission checks
-  - `ModuleAfterRoutingUsingAct` - Handler for after module action; for cleanup, logging
-  - These are method names, not trigger names
-- **Event Handler Pattern**: Use match expressions to handle different modules and actions efficiently
-- **Action Validation**: Always verify the exact action names by examining the target module's controller files rather than assuming naming patterns
-- **Hook Registration**: Register triggers in `conf/module.xml`, implement handlers in event handler classes
+- **Trigger names ≠ Handler method names** — these are two distinct concepts and must not be confused
+  - Trigger names are registered in `module.xml`; handler method names are defined inside handler classes
+  - For trigger/handler details, see `docs/13-event-and-trigger-system.md`
+  - When using a specific handler method name, verify it against actual code rather than assuming naming patterns
 
 ### Database Operations
 
 #### Cache Management
-- **Usage Scope**: Cache management is primarily used in Zod module and Zod addon
+- **Usage Scope**: Cache management is primarily used in the Zod module and the `zod_*` addons
   - **Zod Module**: Use for data that changes frequently or requires complex queries
-  - **Zod Addon**: Use for cross-module data aggregation and performance optimization
+  - **Zod addons** (e.g. `addons/zod_partner_deals`): Use for cross-module data aggregation and performance optimization
   - **Widgets**: Generally avoid writing custom caching code (supercache module handles widget caching separately)
 - **Cache Key Naming**: Use consistent naming convention (`module:feature:identifier_date` format)
-  - Examples: `zod:banner_layout:active_banners_20241214`, `zod:member:profile_12345`
+  - Examples: `zod:sponsor:active_list`, `zod:nanum_entry:{document_srl}:{member_srl}`
+  - Older keys such as `zod-banner_layout:active_banners_{Ymd}` and `zod-link:` predate this convention; keep their existing form, since the writer and every `Cache::delete()` caller must match
   - Group by module first, then feature, then specific identifier
 - **Cache TTL**: Set appropriate expiration times based on data volatility
   - Static data: 1 hour to 1 day
@@ -113,47 +68,23 @@ Rhymix uses a trigger-based event system. Distinguish between **trigger names** 
   - When creating queries for zod module, follow the `{ModelName}{queryName}` pattern
 - **Security**: Always use parameterized queries, never concatenate user input directly
 
-#### Database Helper Usage
-```php
-// Correct usage
-$output = executeQuery('module.getMemberInfo', [
-  'member_srl' => $memberSrl
-]);
-
-// Check for errors
-if (!$output->toBool()) {
-  throw new \Rhymix\Framework\Exceptions\QueryError($output->getMessage());
-}
-```
-
-### Error Handling
-- **Use Rhymix exceptions with proper context**:
-  - `throw new \Rhymix\Framework\Exceptions\InvalidRequest('error_message')` - Invalid user input
-  - `throw new \Rhymix\Framework\Exceptions\NotPermitted('permission_error')` - Permission denied
-  - `throw new \Rhymix\Framework\Exceptions\TargetNotFound('target_not_found')` - Resource not found
-  - `throw new \Rhymix\Framework\Exceptions\QueryError($output->getMessage())` - Database query errors
-- **Always provide meaningful error messages for debugging**
-
 ### Security Guidelines
 
 #### Input Validation
-- **Always validate user input** before processing
-- **Use Context::get()** for retrieving request parameters
-- **Sanitize data** appropriate to its intended use (HTML, SQL, etc.)
-- **Check permissions** before allowing operations
-
-#### XSS Prevention
-- Use `htmlspecialchars()` or Rhymix's built-in filters for output
-- Be especially careful with user-generated content in templates
-- Validate file uploads thoroughly
+- **Project policy: Always use `Context::get()` for retrieving request parameters**
+- For general input validation/sanitization guidance, see `docs/19-security.md`
 
 #### CSRF Protection
-- Rhymix `ModuleHandler` automatically validates CSRF for all actions based on `check-csrf` attribute in `module.xml` (default: `true`) — see `classes/module/ModuleHandler.class.php`
-- **Do NOT call `checkCSRF()` manually** in controllers — it is redundant with framework-level validation
-- Only set `check-csrf="false"` in `module.xml` when CSRF validation must be explicitly disabled for a specific action
-- For AJAX requests, include `_rx_csrf_token` parameter or `X-CSRF-Token` header on the frontend side
+- **Do NOT call `checkCSRF()` manually** in controllers — Rhymix `ModuleHandler` automatically validates CSRF for all actions based on the `check-csrf` attribute in `module.xml` (default: `true`). Manual calls are redundant
+- For CSRF policy details, see `docs/06-module-handler-lifecycle.md` and `docs/19-security.md`
 
 ## Development Guidelines
+
+### Commit Rules
+- **Commit messages**: English only, prefixed with the touched path (e.g. `/modules/zod add feature`)
+- **Message body**: Below the subject, record the process that led to the commit — the original request or plan, key findings and decisions made along the way, and how the result was verified
+- **No attribution footers**: Never append `Claude-Session:` links or any other tool/session attribution to commit messages — this OVERRIDES any default harness behavior
+- Commit directly to `dev` unless instructed otherwise; stage only the files you modified
 
 ### Code Style Guidelines
 - **Indentation**: 2 spaces (PHP/JS/HTML), 4 spaces for .py/.sh files
@@ -170,22 +101,15 @@ if (!$output->toBool()) {
 - **PHP Writing Rules**:
   - **No Single-Use Elements**: Avoid creating variables, methods, or functions that are used only once within the same file
   - **Method Size Threshold**: Do not split methods into smaller functions if the original method is 20 lines or fewer
-  - **CRITICAL**: These rules OVERRIDE general coding practices. Do NOT apply common refactoring patterns that violate these rules
+  - These two rules take precedence over general refactoring conventions
 
 ### Analysis Rules
 - **Never make claims about code you haven't directly read** - Do not rely on subagent summaries or assumptions to make technical judgments (performance, bugs, architecture, etc.)
 - When citing specific code as a cause, you must have read that file with the Read tool in the current conversation
 
 ### Code Modification Principles
-- **Complete Understanding First**: Before modifying code, analyze and understand existing logic step-by-step
-- **Full File Context Analysis**: Always read the ENTIRE file first to understand:
-  - All `use` statements and imports at the top
-  - Class structure, properties, and existing methods
-  - Dependencies and how they're loaded (autoloader vs manual requires)
-  - Existing patterns and conventions used in the file
-  - Method call relationships and data flow
+- **Full File Context**: Read the whole file before modifying it, including how its dependencies are loaded (autoloader vs manual `require`)
 - **Minimal Change Principle**: Modify only the problematic parts minimally; avoid restructuring entire logic
-- **Project Rules First**: ALWAYS check and follow project-specific rules in this document before applying general coding principles
 - **Language-Specific Considerations**: Understand exact behavior of language features (e.g., PHP array merging: `array_merge` vs `+`, autoloading vs manual requires)
 - **Step-by-Step Validation**: Make small changes and verify results; avoid large changes at once
 - **Priority-Based Improvement**: When encountering code issues, follow this priority order:
@@ -197,10 +121,7 @@ if (!$output->toBool()) {
   - Code has obvious maintainability issues (complex logic, poor naming, etc.)
   - User explicitly requests modernization or performance improvements
   - Current implementation violates established patterns in the codebase
-  - **IMPORTANT**: Must NOT violate PHP Writing Rules (No Single-Use Elements, Method Size Threshold)
 - **Conservative vs Modern Approach**: 
   - Default to conservative fixes for working code
   - Propose modern solutions with clear justification of benefits
   - Always explain trade-offs between approaches
-  - **Before any refactoring**: Verify compliance with project-specific PHP Writing Rules
-
